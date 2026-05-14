@@ -1035,7 +1035,7 @@ var rootCmd = &cobra.Command{
 		// the import command handles JSONL files itself and auto-importing
 		// first would interfere (double-import / upsert confusion).
 		if store != nil && !useReadOnly && !globalFlag && cmd.Name() != "import" {
-			maybeAutoImportJSONL(rootCtx, store, beadsDir)
+			maybeAutoImportJSONL(rootCtx, store, beadsDir, doltCfg.ServerMode)
 		}
 
 		// Validate workspace identity for write commands (GH#2438, GH#2372)

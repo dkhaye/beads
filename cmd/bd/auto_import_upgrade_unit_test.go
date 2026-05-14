@@ -75,7 +75,7 @@ func TestMaybeAutoImportJSONL_ServerModeFallback_SkipsWhenNonEmpty(t *testing.T)
 	count := swapFallbackImporter(t, errors.New("test importer should not run"))
 
 	store := &fakeFallbackStore{statsTotalIssues: 5}
-	maybeAutoImportJSONL(context.Background(), store, dir)
+	maybeAutoImportJSONL(context.Background(), store, dir, false)
 
 	if got := count.Load(); got != 0 {
 		t.Fatalf("regression: server-mode fallback importer was invoked %d time(s) on a non-empty store; expected 0 (top-level emptiness guard missing or broken)", got)
@@ -91,7 +91,7 @@ func TestMaybeAutoImportJSONL_ServerModeFallback_SkipsWhenStatisticsNil(t *testi
 	count := swapFallbackImporter(t, errors.New("test importer should not run"))
 
 	store := &fakeFallbackStore{statsNil: true}
-	maybeAutoImportJSONL(context.Background(), store, dir)
+	maybeAutoImportJSONL(context.Background(), store, dir, false)
 
 	if got := count.Load(); got != 0 {
 		t.Fatalf("server-mode fallback importer was invoked %d time(s) when statistics were nil; expected 0", got)
@@ -111,9 +111,27 @@ func TestMaybeAutoImportJSONL_ServerModeFallback_RunsWhenEmpty(t *testing.T) {
 	count := swapFallbackImporter(t, errors.New("test importer: short-circuit before s.Commit"))
 
 	store := &fakeFallbackStore{statsTotalIssues: 0}
-	maybeAutoImportJSONL(context.Background(), store, dir)
+	maybeAutoImportJSONL(context.Background(), store, dir, false)
 
 	if got := count.Load(); got != 1 {
 		t.Fatalf("server-mode fallback importer invoked %d time(s) on empty store; expected exactly 1", got)
+	}
+}
+
+// TestMaybeAutoImportJSONL_SkipsEntirelyInServerMode verifies the early return
+// added in the serverMode guard. In server mode the database is persistent and
+// shared; the JSONL recovery path is irrelevant and would trigger a
+// serialization conflict (Error 1213) with initSchema's open transaction.
+// Passing nil as the store is safe because the early return fires before any
+// store method is called.
+func TestMaybeAutoImportJSONL_SkipsEntirelyInServerMode(t *testing.T) {
+	dir := t.TempDir()
+	writeAutoImportFixtureJSONL(t, dir)
+	count := swapFallbackImporter(t, nil)
+
+	maybeAutoImportJSONL(context.Background(), nil, dir, true)
+
+	if got := count.Load(); got != 0 {
+		t.Fatalf("fallbackImporter invoked %d time(s) with serverMode=true; expected 0", got)
 	}
 }
