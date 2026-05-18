@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -546,4 +547,19 @@ func TestGitAddFile_RedirectCase_DoesNotStageInMainRepo(t *testing.T) {
 	}
 	checkNoStage("worktree", worktree)
 	checkNoStage("main", mainRepo)
+}
+
+// TestMaybeAutoExportJSONL_SkipsEntirelyInServerMode verifies that
+// maybeAutoExport returns immediately when serverMode is true, making
+// no store access and causing no side effects. Mirrors the guard in
+// maybeAutoImportJSONL (GH#3944).
+func TestMaybeAutoExportJSONL_SkipsEntirelyInServerMode(t *testing.T) {
+	// Leave the global store nil — any access would panic, so a clean return
+	// without panic is proof the serverMode guard fires before any store call.
+	orig := store
+	store = nil
+	t.Cleanup(func() { store = orig })
+
+	// Must not panic.
+	maybeAutoExport(context.Background(), true)
 }

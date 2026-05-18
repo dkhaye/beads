@@ -32,7 +32,10 @@ const exportAutoStateFile = "export-state.json"
 
 // maybeAutoExport writes a git-tracked JSONL file if enabled and due.
 // Called from PersistentPostRun after auto-backup.
-func maybeAutoExport(ctx context.Context) {
+func maybeAutoExport(ctx context.Context, serverMode bool) {
+	if serverMode {
+		return
+	}
 	// Skip when running as a git hook to avoid re-export during pre-commit.
 	if os.Getenv("BD_GIT_HOOK") == "1" {
 		debug.Logf("auto-export: skipping — running as git hook\n")
